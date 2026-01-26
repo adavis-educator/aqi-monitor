@@ -19,6 +19,10 @@ from typing import Optional, Tuple, List
 SENSOR_ID = 254241
 SENSOR_URL = f"https://map.purpleair.com/?select={SENSOR_ID}"
 
+# Set to True to apply EPA correction formula (results in lower AQI readings)
+# Set to False to match PurpleAir's "US EPA PM2.5 (AQI)" widget display
+USE_EPA_CORRECTION = False
+
 # Environment variables
 PURPLEAIR_API_KEY = os.environ.get("PURPLEAIR_API_KEY", "")
 GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS", "")
@@ -90,7 +94,16 @@ def calculate_aqi(pm25: float) -> int:
 
 
 def apply_epa_correction(pm25_cf1: float, humidity: float) -> float:
-    """Apply US EPA correction formula for PurpleAir sensors."""
+    """
+    Apply US EPA correction formula for PurpleAir sensors.
+
+    NOTE: This correction is NOT used by default to match PurpleAir's
+    "US EPA PM2.5 (AQI)" display, which uses raw CF=1 values.
+    Set USE_EPA_CORRECTION = True to enable the correction.
+    """
+    if not USE_EPA_CORRECTION:
+        return pm25_cf1
+
     if pm25_cf1 <= 343:
         corrected = 0.52 * pm25_cf1 - 0.086 * humidity + 5.75
     else:

@@ -1,0 +1,34 @@
+name: AQI Monitor
+
+on:
+  # Run every 15 minutes
+  schedule:
+    - cron: '*/15 * * * *'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  check-aqi:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AQI check
+        env:
+          PURPLEAIR_API_KEY: ${{ secrets.PURPLEAIR_API_KEY }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+        run: python aqi_monitor.py

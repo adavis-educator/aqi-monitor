@@ -43,6 +43,9 @@ THRESHOLDS = {
     },
 }
 
+# Weekly status email recipient
+STATUS_RECIPIENT = "adavis@mttam.org"
+
 # School hours (Pacific Time)
 TIMEZONE = ZoneInfo("America/Los_Angeles")
 SCHOOL_START_HOUR = 7   # 7 AM
@@ -389,9 +392,78 @@ def check_and_alert() -> Optional[dict]:
     }
 
 
+def send_weekly_status() -> bool:
+    """Send weekly status email confirming the monitor is working."""
+    # Get current AQI for the status report
+    data = get_sensor_data()
+    if not data:
+        return False
+
+    pm25_corrected = apply_epa_correction(data["pm25_cf1"], data["humidity"])
+    aqi = calculate_aqi(pm25_corrected)
+    category = get_aqi_category(aqi)
+
+    now = datetime.now(TIMEZONE)
+    timestamp = now.strftime("%B %d, %Y at %I:%M %p PT")
+
+    subject = f"✅ AQI Monitor Status: System Active (Current AQI: {aqi})"
+
+    body_html = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #28a745; color: white; padding: 20px; text-align: center;">
+            <h1 style="margin: 0;">AQI Monitor Status</h1>
+        </div>
+        <div style="padding: 20px; background-color: #f8f9fa;">
+            <h2 style="color: #333;">System is Active ✓</h2>
+            <p style="font-size: 16px;">
+                This is your weekly confirmation that the Mt. Tamalpais School AQI monitoring
+                system is running correctly. The system checks air quality every 15 minutes
+                during school hours and will alert you if the AQI rises above 100.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;"><strong>Current AQI</strong></td>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;">{aqi} ({category})</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;"><strong>Sensor</strong></td>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;">{data['name']}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;"><strong>Checked</strong></td>
+                    <td style="padding: 10px; border: 1px solid #ddd; background: white;">{timestamp}</td>
+                </tr>
+            </table>
+            <p style="font-size: 14px; color: #666;">
+                <strong>Alert thresholds:</strong><br>
+                • AQI 100+: Email to attendance@mttam.org<br>
+                • AQI 150+: Email to attendance + admin staff
+            </p>
+            <p>
+                <a href="{SENSOR_URL}" style="display: inline-block; background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    View Live Sensor Data
+                </a>
+            </p>
+        </div>
+        <div style="padding: 15px; background-color: #e9ecef; font-size: 12px; color: #666;">
+            <p>This is an automated weekly status from the Mt. Tamalpais School AQI Monitor.</p>
+        </div>
+    </body>
+    </html>
+    """
+
+    print(f"Sending weekly status email to {STATUS_RECIPIENT}...")
+    return send_email([STATUS_RECIPIENT], subject, body_html)
+
+
 if __name__ == "__main__":
     # Allow running outside school hours for testing with --force flag
-    if "--force" in sys.argv:
+    if "--weekly" in sys.argv:
+        # Send weekly status email
+        result = send_weekly_status()
+        sys.exit(0 if result else 1)
+    elif "--force" in sys.argv:
         # Temporarily override school hours check
         original_check = is_school_hours
         is_school_hours = lambda: True

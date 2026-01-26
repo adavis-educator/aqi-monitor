@@ -341,7 +341,7 @@ def check_and_alert() -> Optional[dict]:
     # Check school hours
     if not is_school_hours():
         print(f"Outside school hours (7am-3pm PT weekdays). Skipping check.")
-        return None
+        return {"skipped": True}
 
     # Get sensor data
     data = get_sensor_data()
